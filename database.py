@@ -21,6 +21,7 @@ class NEODatabase:
     help fetch NEOs by primary designation or by name and to help speed up
     querying for close approaches that match criteria.
     """
+
     def __init__(self, neos, approaches):
         """Create a new `NEODatabase`.
 
@@ -39,15 +40,31 @@ class NEODatabase:
         :param neos: A collection of `NearEarthObject`s.
         :param approaches: A collection of `CloseApproach`es.
         """
-        self._neos = neos
         self._approaches = approaches
 
-        # TODO: What additional auxiliary data structures will be useful?
+        self._neos = {}
+        self._neos_by_name = {}
 
-        # TODO: Link together the NEOs and their close approaches.
+        for neo in neos:
+            key = neo.designation 
+            self._neos[key] = neo
+            
+        
+            # Note, there may be a contradiction here... get_neo_by_name is supposed to return one neo 
+            # but the readme states (on line 75) 'Some IAU names are reused for several NEOs.'
+            if neo.name is not None and neo.name != '': 
+                self._neos_by_name[neo.name] = neo
+
+        for approach in self._approaches:
+            key = approach._designation
+            neo = self._neos[key]
+            neo.approaches.add(approach)
+            approach.neo = neo
 
     def get_neo_by_designation(self, designation):
         """Find and return an NEO by its primary designation.
+
+        This is an 'inspect' feature.
 
         If no match is found, return `None` instead.
 
@@ -59,11 +76,12 @@ class NEODatabase:
         :param designation: The primary designation of the NEO to search for.
         :return: The `NearEarthObject` with the desired primary designation, or `None`.
         """
-        # TODO: Fetch an NEO by its primary designation.
-        return None
+        return self._neos.get(designation, None)
 
     def get_neo_by_name(self, name):
-        """Find and return an NEO by its name.
+        """Find and return an NEO by its name.  
+
+        This is an 'inspect' feature.
 
         If no match is found, return `None` instead.
 
@@ -75,9 +93,12 @@ class NEODatabase:
 
         :param name: The name, as a string, of the NEO to search for.
         :return: The `NearEarthObject` with the desired name, or `None`.
+        
+        Note, there may be a contradiction here... This is supposed to return one neo 
+        but the readme states (on line 75) 'Some IAU names are reused for several NEOs.'
+        
         """
-        # TODO: Fetch an NEO by its name.
-        return None
+        return self._neos_by_name.get(name, None)
 
     def query(self, filters=()):
         """Query close approaches to generate those that match a collection of filters.
@@ -91,8 +112,25 @@ class NEODatabase:
         guaranteed to be sorted meaningfully, although is often sorted by time.
 
         :param filters: A collection of filters capturing user-specified criteria.
-        :return: A stream of matching `CloseApproach` objects.
+        :return: A stream of matching `CloseApproach` objects. 
         """
-        # TODO: Generate `CloseApproach` objects that match all of the filters.
-        for approach in self._approaches:
+
+        approach_filters = filters['approach_filters']
+        neo_filters = filters['neo_filters']
+
+        approaches = self._approaches
+        for one_filter in approach_filters: 
+            approaches = {
+                approach for approach in approaches if one_filter(approach)} 
+
+        neos = self._neos.values()
+        for one_filter in neo_filters: 
+            neos = {neo for neo in neos if one_filter(neo)} 
+
+        approaches = {
+            approach for approach in approaches if approach.neo in neos}
+
+        approaches = sorted(approaches, key=lambda appro: appro.time)
+
+        for approach in approaches:
             yield approach

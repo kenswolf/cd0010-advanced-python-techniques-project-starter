@@ -17,6 +17,7 @@ iterator.
 You'll edit this file in Tasks 3a and 3c.
 """
 import operator
+from itertools import islice
 
 
 class UnsupportedCriterionError(NotImplementedError):
@@ -38,6 +39,7 @@ class AttributeFilter:
     Concrete subclasses can override the `get` classmethod to provide custom
     behavior to fetch a desired attribute from the given `CloseApproach`.
     """
+
     def __init__(self, op, value):
         """Construct a new `AttributeFilter` from an binary predicate and a reference value.
 
@@ -108,8 +110,72 @@ def create_filters(
     :param hazardous: Whether the NEO of a matching `CloseApproach` is potentially hazardous.
     :return: A collection of filters for use with `query`.
     """
-    # TODO: Decide how you will represent your filters.
-    return ()
+    ##############################
+
+    approach_filters = set()
+    neo_filters = set()
+    filters = {'approach_filters': approach_filters,
+               'neo_filters': neo_filters}
+
+    ##############################
+
+    if (date is not None):
+        def exact_date_filter(approach):
+            #print(approach.time.date(), date)
+            return date == approach.time.date()
+
+        approach_filters.add(exact_date_filter)
+    else:
+        if (start_date is not None):
+            def start_date_filter(approach):
+                return (start_date <= approach.time.date())
+            approach_filters.add(start_date_filter)
+
+        if (end_date is not None):
+            def end_date_filter(approach):
+                return (approach.time.date() <= end_date)
+            approach_filters.add(end_date_filter)
+
+    if (distance_min is not None):
+        def distance_min_filter(approach):
+            return (distance_min <= approach.distance)
+        approach_filters.add(distance_min_filter)
+
+    if (distance_max is not None):
+        def distance_max_filter(approach):
+            return (approach.distance <= distance_max)
+        approach_filters.add(distance_max_filter)
+
+    if (velocity_min is not None):
+        def velocity_min_filter(approach):
+            return (velocity_min <= approach.velocity)
+        approach_filters.add(velocity_min_filter)
+
+    if (velocity_max is not None):
+        def velocity_max_filter(approach):
+            return (approach.velocity <= velocity_max)
+        approach_filters.add(velocity_max_filter)
+
+    ##############################
+
+    if (diameter_min is not None):
+        def diameter_min_filter(neo):
+            return (diameter_min <= neo.diameter)
+        neo_filters.add(diameter_min_filter)
+
+    if (diameter_max is not None):
+        def diameter_max_filter(neo):
+            return (neo.diameter <= diameter_max)
+        neo_filters.add(diameter_max_filter)
+
+    if (hazardous is not None):
+        def hazardous_filter(neo):
+            return (neo.hazardous == hazardous)
+        neo_filters.add(hazardous_filter)
+
+    ##############################
+
+    return filters
 
 
 def limit(iterator, n=None):
@@ -119,7 +185,8 @@ def limit(iterator, n=None):
 
     :param iterator: An iterator of values.
     :param n: The maximum number of values to produce.
-    :yield: The first (at most) `n` values from the iterator.
+    :yield: The first (at most) `n` values from the iterator. 
     """
-    # TODO: Produce at most `n` values from the given iterator.
+    if n is not None and n > 0:
+        iterator = islice(iterator, n)
     return iterator
